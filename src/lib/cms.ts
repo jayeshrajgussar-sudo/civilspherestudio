@@ -1,17 +1,47 @@
 import { createServerFn } from "@tanstack/react-start";
 import { readFile, writeFile, mkdir, readdir, unlink, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { join, basename } from "node:path";
+import { sql, initializeDatabase } from "./db";
+
+// Keep track of whether database check/seeding has been run once on start
+let isDbInitialized = false;
+
+async function ensureDbReady() {
+  if (!isDbInitialized) {
+    await initializeDatabase();
+    isDbInitialized = true;
+  }
+}
 
 // Get Content Server Function
 export const getContent = createServerFn({ method: "GET" }).handler(async () => {
   try {
+    await ensureDbReady();
+    
+    // Query content from Neon DB
+    const results = await sql`
+      SELECT content FROM site_content WHERE id = 1 LIMIT 1;
+    `;
+    
+    if (results.length > 0) {
+      return results[0].content;
+    }
+    
+    // Fallback if database is empty but initialized
     const contentPath = join(process.cwd(), "src", "data", "content.json");
     const fileContent = await readFile(contentPath, "utf-8");
     return JSON.parse(fileContent);
   } catch (error: any) {
-    console.error("Error reading content.json, returning backup default.", error);
-    // fallback if file not found or corrupted
-    return null;
+    console.error("Error reading content from Neon DB, returning backup default.", error);
+    try {
+      // Local fallback
+      const contentPath = join(process.cwd(), "src", "data", "content.json");
+      const fileContent = await readFile(contentPath, "utf-8");
+      return JSON.parse(fileContent);
+    } catch (fallbackError) {
+      console.error("Local fallback also failed.", fallbackError);
+      return null;
+    }
   }
 });
 
@@ -29,11 +59,27 @@ export const saveContent = createServerFn({ method: "POST" })
     }
 
     try {
-      const contentPath = join(process.cwd(), "src", "data", "content.json");
-      await writeFile(contentPath, JSON.stringify(data.content, null, 2), "utf-8");
+      await ensureDbReady();
+      
+      // Upsert into Neon DB
+      await sql`
+        INSERT INTO site_content (id, content, updated_at)
+        VALUES (1, ${data.content as any}, CURRENT_TIMESTAMP)
+        ON CONFLICT (id)
+        DO UPDATE SET content = ${data.content as any}, updated_at = CURRENT_TIMESTAMP;
+      `;
+      
+      // Optional: write locally to content.json as a local cache/fallback (expected to fail on serverless)
+      try {
+        const contentPath = join(process.cwd(), "src", "data", "content.json");
+        await writeFile(contentPath, JSON.stringify(data.content, null, 2), "utf-8");
+      } catch (writeErr: any) {
+        console.warn("Could not write local backup copy of content.json (expected in serverless):", writeErr.message);
+      }
+      
       return { success: true };
     } catch (error: any) {
-      console.error("Error writing content.json", error);
+      console.error("Error saving content to database:", error);
       throw new Error("Failed to save content: " + error.message);
     }
   });

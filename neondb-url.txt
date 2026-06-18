@@ -1,0 +1,1 @@
+postgresql://neondb_owner:npg_4UdDBwTOAqL9@ep-proud-thunder-adqntlzr-pooler.c-2.us-east-1.aws.neon.tech/civilsphere-studio-db?sslmode=require&channel_binding=require
