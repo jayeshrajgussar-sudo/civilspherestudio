@@ -1,6 +1,6 @@
 import { o as __toESM } from "../_runtime.mjs";
-import { _ as useNavigate, f as Outlet, l as useLocation } from "../_libs/@tanstack/react-router+[...].mjs";
 import { o as require_jsx_runtime, s as require_react } from "../_libs/@radix-ui/react-collection+[...].mjs";
+import { _ as useNavigate, f as Outlet, l as useLocation } from "../_libs/@tanstack/react-router+[...].mjs";
 import { t as Toaster } from "../_libs/sonner.mjs";
 //#region node_modules/.nitro/vite/services/ssr/assets/admin-BLmcp-61.js
 var import_react = /* @__PURE__ */ __toESM(require_react());

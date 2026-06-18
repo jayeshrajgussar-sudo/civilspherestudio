@@ -1,6 +1,6 @@
 import { m as createFileRoute, p as lazyRouteComponent } from "../_libs/@tanstack/react-router+[...].mjs";
-import { r as getContent } from "./cms-qlv4q2yq.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/routes-R8Zsq7lR.js
+import { r as getContent } from "./cms-DIpxpoJE.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/routes-B9vq8QOM.js
 var defaultContent = {
 	hero: {
 		titlePart1: "Turning land into",
@@ -130,7 +130,7 @@ var defaultContent = {
 		"3d": []
 	}
 };
-var $$splitComponentImporter = () => import("./routes-DIKIh7xH.mjs");
+var $$splitComponentImporter = () => import("./routes-DlvDDG7o.mjs");
 var Route = createFileRoute("/")({
 	loader: async () => {
 		return await getContent();

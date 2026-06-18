@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { readFile, writeFile, mkdir, readdir, unlink, stat } from "node:fs/promises";
 import { join, basename } from "node:path";
 import { sql, initializeDatabase } from "./db";
+import fallbackContent from "../data/content.json";
 
 // Keep track of whether database check/seeding has been run once on start
 let isDbInitialized = false;
@@ -16,6 +17,11 @@ async function ensureDbReady() {
 // Get Content Server Function
 export const getContent = createServerFn({ method: "GET" }).handler(async () => {
   try {
+    if (!process.env.DATABASE_URL) {
+      console.warn("DATABASE_URL environment variable is missing. Using static fallback content.");
+      return fallbackContent;
+    }
+
     await ensureDbReady();
     
     // Query content from Neon DB
@@ -27,21 +33,10 @@ export const getContent = createServerFn({ method: "GET" }).handler(async () => 
       return results[0].content;
     }
     
-    // Fallback if database is empty but initialized
-    const contentPath = join(process.cwd(), "src", "data", "content.json");
-    const fileContent = await readFile(contentPath, "utf-8");
-    return JSON.parse(fileContent);
+    return fallbackContent;
   } catch (error: any) {
-    console.error("Error reading content from Neon DB, returning backup default.", error);
-    try {
-      // Local fallback
-      const contentPath = join(process.cwd(), "src", "data", "content.json");
-      const fileContent = await readFile(contentPath, "utf-8");
-      return JSON.parse(fileContent);
-    } catch (fallbackError) {
-      console.error("Local fallback also failed.", fallbackError);
-      return null;
-    }
+    console.error("Error reading content from Neon DB, returning static default fallback.", error);
+    return fallbackContent;
   }
 });
 
@@ -59,6 +54,10 @@ export const saveContent = createServerFn({ method: "POST" })
     }
 
     try {
+      if (!process.env.DATABASE_URL) {
+        throw new Error("DATABASE_URL environment variable is missing. Cannot save changes.");
+      }
+
       await ensureDbReady();
       
       // Upsert into Neon DB
