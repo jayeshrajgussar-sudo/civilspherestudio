@@ -2,20 +2,46 @@ import { neon } from "@neondatabase/serverless";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-const databaseUrl = process.env.DATABASE_URL;
+type NeonSql = ReturnType<typeof neon>;
+let sqlClient: NeonSql | undefined;
 
-if (!databaseUrl) {
+function getDatabaseUrl() {
+  const url = process.env.DATABASE_URL?.trim();
+  if (!url) return null;
+
+  try {
+    new URL(url);
+    return url;
+  } catch {
+    console.error("DATABASE_URL environment variable is not a valid URL.");
+    return null;
+  }
+}
+
+if (!getDatabaseUrl()) {
   console.warn("WARNING: DATABASE_URL environment variable is not set!");
 }
 
-export const sql = neon(databaseUrl || "");
+function getSqlClient() {
+  const url = getDatabaseUrl();
+  if (!url) {
+    throw new Error("DATABASE_URL is missing or invalid.");
+  }
+
+  sqlClient ??= neon(url);
+  return sqlClient;
+}
+
+export const sql = ((strings: TemplateStringsArray, ...values: unknown[]) => {
+  return getSqlClient()(strings, ...values);
+}) as NeonSql;
 
 /**
  * Ensures the database schema is initialized and contains default seed content.
  */
 export async function initializeDatabase() {
-  if (!databaseUrl) {
-    console.error("Cannot initialize database: DATABASE_URL is missing.");
+  if (!getDatabaseUrl()) {
+    console.error("Cannot initialize database: DATABASE_URL is missing or invalid.");
     return;
   }
 

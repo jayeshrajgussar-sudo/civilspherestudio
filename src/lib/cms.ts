@@ -1,17 +1,19 @@
 import { createServerFn } from "@tanstack/react-start";
 import { readFile, writeFile, mkdir, readdir, unlink, stat } from "node:fs/promises";
 import { join, basename } from "node:path";
-import { sql, initializeDatabase } from "./db";
 import fallbackContent from "../data/content.json";
 
 // Keep track of whether database check/seeding has been run once on start
 let isDbInitialized = false;
 
 async function ensureDbReady() {
+  const db = await import("./db");
   if (!isDbInitialized) {
-    await initializeDatabase();
+    await db.initializeDatabase();
     isDbInitialized = true;
   }
+
+  return db;
 }
 
 // Get Content Server Function
@@ -22,7 +24,7 @@ export const getContent = createServerFn({ method: "GET" }).handler(async () => 
       return fallbackContent;
     }
 
-    await ensureDbReady();
+    const { sql } = await ensureDbReady();
     
     // Query content from Neon DB
     const results = await sql`
@@ -58,7 +60,7 @@ export const saveContent = createServerFn({ method: "POST" })
         throw new Error("DATABASE_URL environment variable is missing. Cannot save changes.");
       }
 
-      await ensureDbReady();
+      const { sql } = await ensureDbReady();
       
       // Upsert into Neon DB
       await sql`
@@ -166,4 +168,3 @@ export const deleteMediaFile = createServerFn({ method: "POST" })
       throw new Error("Failed to delete file: " + error.message);
     }
   });
-
